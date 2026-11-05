@@ -1,0 +1,79 @@
+@page "/inventory"
+@using InventoryHub.Models
+@using InventoryHub.Services
+@inject InventoryApiClient ApiClient
+
+<h1>Inventory</h1>
+
+@if (isLoading)
+{
+    <p><em>Loading products...</em></p>
+}
+else if (error != null)
+{
+    <p style="color:red">@error</p>
+}
+else
+{
+    <button @onclick="LoadProducts">Refresh</button>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in products)
+            {
+                <tr>
+                    <td>@p.Id</td>
+                    <td>@p.Name</td>
+                    <td>@p.Category</td>
+                    <td>@p.Price.ToString("C")</td>
+                    <td>@p.Stock</td>
+                    <td>@p.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ProductDto> products = new();
+    private bool isLoading = true;
+    private string? error;
+    private CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        // Cancel any in-flight request
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+
+        isLoading = true;
+        error = null;
+
+        try
+        {
+            products = await ApiClient.GetProductsAsync(_cts.Token);
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load products: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
